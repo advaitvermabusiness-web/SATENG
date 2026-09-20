@@ -1,0 +1,178 @@
+export type DiscoveryElaboration = {
+  past: string;
+  present: string;
+  future: string;
+  synonyms: string[];
+  antonyms: string[];
+};
+
+export const DISCOVERY_ELABORATIONS: Record<string, DiscoveryElaboration> = {
+  serendipity: {
+    past: 'Meeting my future mentor at the café was pure serendipity.',
+    present: 'Serendipity often appears when we remain curious and open.',
+    future: 'The unplanned detour may lead to another moment of serendipity.',
+    synonyms: ['chance discovery', 'happy accident', 'fortunate coincidence'],
+    antonyms: ['misfortune', 'design', 'deliberate planning'],
+  },
+  nuance: {
+    past: 'The actor captured every nuance of the character’s uncertainty.',
+    present: 'This translation preserves the nuance of the original phrase.',
+    future: 'A careful revision will add nuance to the argument.',
+    synonyms: ['subtlety', 'shade', 'fine distinction'],
+    antonyms: ['obviousness', 'bluntness', 'simplicity'],
+  },
+  mellifluous: {
+    past: 'Her mellifluous voice filled the quiet auditorium.',
+    present: 'The cellist produces a mellifluous tone.',
+    future: 'The choir will sound mellifluous after more rehearsal.',
+    synonyms: ['melodious', 'harmonious', 'dulcet'],
+    antonyms: ['harsh', 'grating', 'discordant'],
+  },
+  ephemeral: {
+    past: 'The rainbow was beautiful but ephemeral.',
+    present: 'Online fame is often ephemeral.',
+    future: 'The installation will be ephemeral and disappear after one week.',
+    synonyms: ['fleeting', 'transient', 'short-lived'],
+    antonyms: ['lasting', 'permanent', 'enduring'],
+  },
+  meticulous: {
+    past: 'The researcher kept meticulous records throughout the trial.',
+    present: 'She is meticulous when checking every calculation.',
+    future: 'The inspector will conduct a meticulous review tomorrow.',
+    synonyms: ['careful', 'precise', 'thorough'],
+    antonyms: ['careless', 'sloppy', 'haphazard'],
+  },
+  ubiquitous: {
+    past: 'Printed advertisements once seemed ubiquitous in the city.',
+    present: 'Smartphones are ubiquitous in modern life.',
+    future: 'Renewable technology may become ubiquitous within a generation.',
+    synonyms: ['omnipresent', 'pervasive', 'everywhere'],
+    antonyms: ['rare', 'scarce', 'uncommon'],
+  },
+  eloquent: {
+    past: 'Her eloquent speech persuaded the undecided audience.',
+    present: 'His silence is an eloquent expression of grief.',
+    future: 'The advocate will make an eloquent case for reform.',
+    synonyms: ['expressive', 'articulate', 'persuasive'],
+    antonyms: ['inarticulate', 'awkward', 'tongue-tied'],
+  },
+  resonant: {
+    past: 'The speaker’s final message was resonant with young voters.',
+    present: 'The poem remains resonant because its conflict feels universal.',
+    future: 'That image will become more resonant as the story unfolds.',
+    synonyms: ['meaningful', 'evocative', 'reverberant'],
+    antonyms: ['hollow', 'flat', 'forgettable'],
+  },
+  cogent: {
+    past: 'The scientist offered a cogent explanation for the anomaly.',
+    present: 'Her evidence supports a cogent argument.',
+    future: 'The revised essay will present a more cogent conclusion.',
+    synonyms: ['convincing', 'logical', 'compelling'],
+    antonyms: ['weak', 'confused', 'unconvincing'],
+  },
+  convivial: {
+    past: 'The reunion had a warm, convivial atmosphere.',
+    present: 'Our host creates a convivial mood at every dinner.',
+    future: 'The shared meal will provide a convivial end to the conference.',
+    synonyms: ['sociable', 'jovial', 'friendly'],
+    antonyms: ['hostile', 'gloomy', 'unsociable'],
+  },
+  liminal: {
+    past: 'The empty station felt liminal in the hours before dawn.',
+    present: 'Graduation is a liminal period between school and adult life.',
+    future: 'The character will enter a liminal stage of transformation.',
+    synonyms: ['transitional', 'in-between', 'threshold'],
+    antonyms: ['settled', 'fixed', 'established'],
+  },
+  ineffable: {
+    past: 'The mountain view filled us with ineffable wonder.',
+    present: 'The music conveys an ineffable sense of longing.',
+    future: 'The eclipse will inspire an ineffable feeling of awe.',
+    synonyms: ['indescribable', 'inexpressible', 'unutterable'],
+    antonyms: ['expressible', 'definable', 'describable'],
+  },
+  ebullient: {
+    past: 'The team was ebullient after its unexpected victory.',
+    present: 'Her ebullient personality energizes the room.',
+    future: 'The graduates will be ebullient when the results arrive.',
+    synonyms: ['exuberant', 'buoyant', 'enthusiastic'],
+    antonyms: ['dejected', 'subdued', 'gloomy'],
+  },
+  laconic: {
+    past: 'His laconic reply ended the discussion.',
+    present: 'The detective is laconic but observant.',
+    future: 'Her report will remain laconic despite the complex evidence.',
+    synonyms: ['brief', 'terse', 'concise'],
+    antonyms: ['verbose', 'wordy', 'talkative'],
+  },
+  verdant: {
+    past: 'Spring rain transformed the valley into a verdant landscape.',
+    present: 'A verdant garden surrounds the old library.',
+    future: 'The restored wetlands will become verdant again.',
+    synonyms: ['lush', 'green', 'leafy'],
+    antonyms: ['barren', 'arid', 'withered'],
+  },
+  assiduous: {
+    past: 'Her assiduous preparation earned the committee’s trust.',
+    present: 'He is assiduous in reviewing every source.',
+    future: 'Assiduous practice will strengthen her command of vocabulary.',
+    synonyms: ['diligent', 'persistent', 'industrious'],
+    antonyms: ['lazy', 'careless', 'inattentive'],
+  },
+  magnanimous: {
+    past: 'The winner was magnanimous toward her disappointed opponent.',
+    present: 'A magnanimous leader shares credit with the entire team.',
+    future: 'He will be magnanimous and forgive the honest mistake.',
+    synonyms: ['generous', 'forgiving', 'noble'],
+    antonyms: ['petty', 'vindictive', 'selfish'],
+  },
+  wistful: {
+    past: 'She gave a wistful smile when she found the old photograph.',
+    present: 'The song creates a wistful mood.',
+    future: 'Years from now, they will feel wistful about this final summer.',
+    synonyms: ['nostalgic', 'yearning', 'melancholy'],
+    antonyms: ['content', 'cheerful', 'unreflective'],
+  },
+  placid: {
+    past: 'The lake remained placid throughout the windless morning.',
+    present: 'His placid manner calms the anxious group.',
+    future: 'The sea will become placid after the storm passes.',
+    synonyms: ['calm', 'tranquil', 'serene'],
+    antonyms: ['agitated', 'turbulent', 'restless'],
+  },
+  incandescent: {
+    past: 'The metal became incandescent inside the furnace.',
+    present: 'Her incandescent performance captivates the audience.',
+    future: 'The western sky will turn incandescent at sunset.',
+    synonyms: ['glowing', 'radiant', 'brilliant'],
+    antonyms: ['dim', 'dull', 'unremarkable'],
+  },
+  discerning: {
+    past: 'The discerning editor noticed a flaw others had missed.',
+    present: 'A discerning reader questions unsupported claims.',
+    future: 'Discerning customers will compare the evidence before buying.',
+    synonyms: ['perceptive', 'judicious', 'insightful'],
+    antonyms: ['undiscriminating', 'unobservant', 'gullible'],
+  },
+  fortuitous: {
+    past: 'A fortuitous delay allowed us to avoid the storm.',
+    present: 'Their fortuitous meeting leads to an important collaboration.',
+    future: 'The schedule change may prove fortuitous.',
+    synonyms: ['fortunate', 'opportune', 'lucky'],
+    antonyms: ['unfortunate', 'planned', 'ill-timed'],
+  },
+  evocative: {
+    past: 'The novelist used evocative details to recreate the harbor.',
+    present: 'This photograph is evocative of childhood summers.',
+    future: 'The composer will add an evocative melody to the final scene.',
+    synonyms: ['suggestive', 'expressive', 'reminiscent'],
+    antonyms: ['bland', 'literal', 'uninspiring'],
+  },
+  candid: {
+    past: 'She gave a candid account of the project’s failures.',
+    present: 'His candid feedback helps the team improve.',
+    future: 'The director will be candid about the risks ahead.',
+    synonyms: ['frank', 'honest', 'forthright'],
+    antonyms: ['evasive', 'dishonest', 'guarded'],
+  },
+};
