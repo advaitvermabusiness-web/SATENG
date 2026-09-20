@@ -1,0 +1,108 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: vocabulary-state
+    description: Signed-in learner state
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /me/vocabulary-state:
+    get:
+      operationId: getVocabularyState
+      tags: [vocabulary-state]
+      summary: Get the signed-in learner's vocabulary state
+      responses:
+        "200":
+          description: Current account-backed study state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VocabularyStateResponse"
+        "401":
+          description: Authentication required
+    put:
+      operationId: saveVocabularyState
+      tags: [vocabulary-state]
+      summary: Save the signed-in learner's vocabulary state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                state:
+                  $ref: "#/components/schemas/VocabularyState"
+              required: [state]
+      responses:
+        "200":
+          description: State saved
+        "400":
+          description: Invalid state
+        "401":
+          description: Authentication required
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    VocabularyState:
+      type: object
+      properties:
+        settings:
+          type: object
+          additionalProperties: true
+        progress:
+          type: array
+          items: {}
+        sessions:
+          type: array
+          items: {}
+        bookmarks:
+          type: array
+          items:
+            type: string
+        discoveryHistory:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      required: [settings, progress, sessions, bookmarks]
+    VocabularyStateResponse:
+      type: object
+      properties:
+        state:
+          anyOf:
+            - $ref: "#/components/schemas/VocabularyState"
+            - type: "null"
+        updatedAt:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: "null"
+      required: [state, updatedAt]
+
