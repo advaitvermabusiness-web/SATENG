@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "SAT Vocabulary Coach"
+description = "A cross-platform vocabulary study app that helps students master SAT words through guided lessons, examples, parts of speech, spaced review, and mastery quizzes."
+version = "1.0.0"
+id = "artifacts/sat-vocabulary-coach"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20823
+
+[services.development]
+run = "pnpm --filter @workspace/sat-vocabulary-coach run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sat-vocabulary-coach", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/sat-vocabulary-coach/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20823"
+BASE_PATH = "/"
