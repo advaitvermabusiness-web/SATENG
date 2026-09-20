@@ -1,0 +1,6 @@
+- [Audience mode boundary](audience-mode-boundary.md) — keep ongoing everyday learning distinct from the SAT test-taker path.
+- [Discovery retention gestures](discovery-retention-gestures.md) — swipes belong only to Discovery; Learn and Quick use explicit rating buttons.
+- [Learning mode boundary](learning-mode-boundary.md) — Learn is guided study with recall; Quick stays fast browse-and-review.
+- [Expert dictionary source](expert-dictionary-source.md) — Expert Mode is distinct from SAT and uses Merriam-Webster references for its primarily American audience.
+- [SAT context-question standard](sat-context-question-standard.md) — SAT word questions must rely on passage clues and rotate across four academic domains.
+- [Sentence assessment ratings](sentence-assessment-ratings.md) — keep grammar scoring separate from the existing sentence-complexity rating.
