@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: vocabulary-state
     description: Signed-in learner state
+  - name: discovery
+    description: Discover search and community recommendations
 paths:
   /healthz:
     get:
@@ -49,11 +51,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                state:
-                  $ref: "#/components/schemas/VocabularyState"
-              required: [state]
+              $ref: "#/components/schemas/VocabularyStateInput"
       responses:
         "200":
           description: State saved
@@ -61,6 +59,65 @@ paths:
           description: Invalid state
         "401":
           description: Authentication required
+  /discover/recommendations:
+    get:
+      operationId: getWordRecommendations
+      tags: [discovery]
+      summary: Get aggregated Discover word recommendations
+      responses:
+        "200":
+          description: Recommendation summaries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WordRecommendationList"
+    post:
+      operationId: recommendWord
+      tags: [discovery]
+      summary: Recommend a word for developer review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WordRecommendationInput"
+      responses:
+        "200":
+          description: Saved recommendation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WordRecommendationResponse"
+        "400":
+          description: Invalid recommendation
+        "401":
+          description: Authentication required
+  /discover/dictionary:
+    get:
+      operationId: lookupDiscoverDictionary
+      tags: [discovery]
+      summary: Look up an arbitrary word in the Discover dictionary
+      parameters:
+        - name: word
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 80
+      responses:
+        "200":
+          description: Dictionary entry with field classification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoverDictionaryEntry"
+        "400":
+          description: Invalid search
+        "429":
+          description: Lookup rate limit reached
+        "502":
+          description: Dictionary temporarily unavailable
 components:
   schemas:
     HealthStatus:
@@ -92,6 +149,13 @@ components:
             type: object
             additionalProperties: true
       required: [settings, progress, sessions, bookmarks]
+    VocabularyStateInput:
+      type: object
+      additionalProperties: false
+      properties:
+        state:
+          $ref: "#/components/schemas/VocabularyState"
+      required: [state]
     VocabularyStateResponse:
       type: object
       properties:
@@ -105,4 +169,104 @@ components:
               format: date-time
             - type: "null"
       required: [state, updatedAt]
+    WordRecommendation:
+      type: object
+      properties:
+        wordKey:
+          type: string
+        word:
+          type: string
+        field:
+          type: string
+        count:
+          type: integer
+        recommendedByMe:
+          type: boolean
+      required: [wordKey, word, field, count, recommendedByMe]
+    WordRecommendationInput:
+      type: object
+      additionalProperties: false
+      properties:
+        wordKey:
+          type: string
+          minLength: 1
+          maxLength: 120
+        word:
+          type: string
+          minLength: 1
+          maxLength: 80
+        field:
+          type: string
+          enum:
+            - Economics
+            - Science
+            - Politics & Society
+            - Literature & Arts
+            - Psychology
+            - Personality & Human Behavior
+            - Medicine & Healthcare
+            - Technology
+            - Everyday Communication
+            - SAT Vocabulary
+            - Expert Vocabulary
+        source:
+          type: string
+          enum: [library, search]
+      required: [wordKey, word, field, source]
+    WordRecommendationResponse:
+      type: object
+      properties:
+        recommendation:
+          $ref: "#/components/schemas/WordRecommendation"
+      required: [recommendation]
+    WordRecommendationList:
+      type: object
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: "#/components/schemas/WordRecommendation"
+      required: [recommendations]
+    DiscoverDictionaryEntry:
+      type: object
+      properties:
+        word:
+          type: string
+        pronunciation:
+          type: string
+        partOfSpeech:
+          type: string
+        definition:
+          type: string
+        field:
+          type: string
+          enum:
+            - Economics
+            - Science
+            - Politics & Society
+            - Literature & Arts
+            - Psychology
+            - Personality & Human Behavior
+            - Medicine & Healthcare
+            - Technology
+            - Everyday Communication
+            - SAT Vocabulary
+            - Expert Vocabulary
+        fieldExplanation:
+          type: string
+        context:
+          type: string
+        synonyms:
+          type: array
+          items:
+            type: string
+        antonyms:
+          type: array
+          items:
+            type: string
+        wordFamily:
+          type: string
+        etymology:
+          type: string
+      required: [word, pronunciation, partOfSpeech, definition, field, fieldExplanation, context, synonyms, antonyms, wordFamily, etymology]
 

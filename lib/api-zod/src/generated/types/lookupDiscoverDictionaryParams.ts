@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
-}
+export type LookupDiscoverDictionaryParams = {
+/**
+ * @minLength 2
+ * @maxLength 80
+ */
+word: string;
+};

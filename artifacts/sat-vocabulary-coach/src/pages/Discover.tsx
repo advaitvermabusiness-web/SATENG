@@ -1,7 +1,10 @@
 import { type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUp, Brain, Check, ChevronDown, Clock3, History, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUp, Brain, Check, ChevronDown, Clock3, History, Search, Sparkles, ThumbsUp } from 'lucide-react';
+import { useUser } from '@clerk/react';
+import { Link } from 'wouter';
 import { EVERYDAY_WORDS } from '../data/everydayWords';
 import { DISCOVERY_ELABORATIONS } from '../data/discoveryElaborations';
+import { DISCOVERY_FIELDS, makeRecommendationKey, type DiscoveryField } from '../data/discoveryFields';
 import { type DiscoveryHistoryItem, type Word } from '../types';
 import { WordActions } from '../components/WordActions';
 import { GeneratedScenario } from '../components/GeneratedScenario';
@@ -23,6 +26,27 @@ type SentenceEvaluation = {
 };
 
 type ReviewRating = 'again' | 'soon' | 'known';
+type RecommendationSummary = {
+  wordKey: string;
+  word: string;
+  field: DiscoveryField;
+  count: number;
+  recommendedByMe: boolean;
+};
+
+type DictionaryEntry = {
+  word: string;
+  pronunciation: string;
+  partOfSpeech: string;
+  definition: string;
+  field: DiscoveryField;
+  fieldExplanation: string;
+  context: string;
+  synonyms: string[];
+  antonyms: string[];
+  wordFamily: string;
+  etymology: string;
+};
 
 function hash(value: string) {
   return value.split('').reduce((total, character) => ((total * 31) + character.charCodeAt(0)) >>> 0, 7);
@@ -82,14 +106,38 @@ export function Discover({
   setHistory: HistorySetter;
   syncStatus: AccountSyncStatus;
 }) {
+  const { user, isLoaded: userLoaded } = useUser();
   const containerRef = useRef<HTMLDivElement>(null);
   const appendingRef = useRef(false);
-  const [view, setView] = useState<'feed' | 'history'>('feed');
+  const [view, setView] = useState<'feed' | 'search' | 'history'>('feed');
   const [activeIndex, setActiveIndex] = useState(0);
   const [round, setRound] = useState(1);
   const [feed, setFeed] = useState<Word[]>(() => makeBatch(0, history));
   const activeWord = feed[activeIndex];
   const needsHydrationRefreshRef = useRef(false);
+  const [recommendations, setRecommendations] = useState<Record<string, RecommendationSummary>>({});
+  const [recommendationError, setRecommendationError] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch('/api/discover/recommendations', {
+      credentials: 'include',
+      signal: controller.signal,
+    })
+      .then(async response => {
+        if (!response.ok) throw new Error(`Recommendations failed (${response.status})`);
+        return response.json() as Promise<{ recommendations?: RecommendationSummary[] }>;
+      })
+      .then(payload => {
+        const next: Record<string, RecommendationSummary> = {};
+        for (const item of payload.recommendations ?? []) next[item.wordKey] = item;
+        setRecommendations(next);
+      })
+      .catch(error => {
+        if ((error as Error).name !== 'AbortError') setRecommendationError('Recommendation counts are temporarily unavailable.');
+      });
+    return () => controller.abort();
+  }, [user?.id]);
 
   useEffect(() => {
     if (syncStatus === 'loading') {
@@ -188,6 +236,38 @@ export function Discover({
     });
   };
 
+  const recommendWord = async (
+    word: string,
+    field: DiscoveryField,
+    source: 'library' | 'search',
+    knownWordId?: string,
+  ) => {
+    const wordKey = knownWordId ?? makeRecommendationKey(word);
+    if (!wordKey) throw new Error('Enter a word to recommend.');
+    setRecommendationError('');
+    const response = await fetch('/api/discover/recommendations', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ wordKey, word, field, source }),
+    });
+    const payload = await response.json() as {
+      recommendation?: RecommendationSummary;
+      error?: string;
+    };
+    if (!response.ok || !payload.recommendation) {
+      const message = response.status === 401
+        ? 'Sign in to recommend a word.'
+        : payload.error ?? 'This recommendation could not be sent.';
+      setRecommendationError(message);
+      throw new Error(message);
+    }
+    setRecommendations(current => ({
+      ...current,
+      [payload.recommendation!.wordKey]: payload.recommendation!,
+    }));
+  };
+
   const historyWords = useMemo(
     () => [...history]
       .sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime())
@@ -208,6 +288,9 @@ export function Discover({
         <div className="flex rounded-xl bg-[hsl(var(--secondary)/.7)] p-1">
           <button type="button" onClick={() => setView('feed')} className={`rounded-lg px-3 py-2 text-xs font-bold ${view === 'feed' ? 'bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
             Feed
+          </button>
+          <button type="button" onClick={() => setView('search')} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${view === 'search' ? 'bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+            <Search size={13} /> Search
           </button>
           <button type="button" onClick={() => setView('history')} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${view === 'history' ? 'bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
             <History size={13} /> History <span className="font-mono-ui text-[9px]">{history.length}</span>
@@ -230,10 +313,216 @@ export function Discover({
             />
           ))}
         </div>
+      ) : view === 'search' ? (
+        <SearchView
+          recommendations={recommendations}
+          isSignedIn={userLoaded && Boolean(user)}
+          recommendationError={recommendationError}
+          onRecommend={recommendWord}
+        />
       ) : (
         <HistoryView entries={historyWords} bookmarks={bookmarks} onToggleBookmark={onToggleBookmark} />
       )}
     </div>
+  );
+}
+
+function SearchView({
+  recommendations,
+  isSignedIn,
+  recommendationError,
+  onRecommend,
+}: {
+  recommendations: Record<string, RecommendationSummary>;
+  isSignedIn: boolean;
+  recommendationError: string;
+  onRecommend: (word: string, field: DiscoveryField, source: 'library' | 'search', knownWordId?: string) => Promise<void>;
+}) {
+  const [query, setQuery] = useState('');
+  const [entry, setEntry] = useState<DictionaryEntry | null>(null);
+  const [searchedWord, setSearchedWord] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const submitSearch = async (event?: { preventDefault: () => void }) => {
+    event?.preventDefault();
+    const word = query.trim().replace(/\s+/g, ' ');
+    if (word.length < 2) {
+      setError('Enter a word or short phrase to look up.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch(`/api/discover/dictionary?word=${encodeURIComponent(word)}`, {
+        credentials: 'include',
+      });
+      const payload = await response.json() as DictionaryEntry & { error?: string };
+      if (!response.ok) throw new Error(payload.error || 'The dictionary is temporarily unavailable.');
+      setEntry(payload);
+      setSearchedWord(word);
+    } catch (requestError) {
+      setEntry(null);
+      setError(requestError instanceof Error ? requestError.message : 'The dictionary is temporarily unavailable.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const entryWordKey = entry ? makeRecommendationKey(entry.word) : '';
+
+  return (
+    <div className="h-full overflow-y-auto px-5 pb-28 pt-24 md:px-10 md:pb-12">
+      <div className="mx-auto max-w-[1050px]">
+        <div className="rounded-[26px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 shadow-soft md:p-7">
+          <div className="flex items-center gap-2 font-mono-ui text-[9px] uppercase tracking-[.15em] text-[hsl(var(--primary))]"><Search size={13} /> Search Discover</div>
+          <h1 className="mt-2 font-display text-4xl tracking-[-.04em]">Your specialized vocabulary dictionary.</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">Look up any word or short phrase. Get its meaning, pronunciation, natural context, and the field where it is most useful.</p>
+          <label htmlFor="discover-search" className="sr-only">Search for a word, meaning, category, or field</label>
+          <form onSubmit={submitSearch} className="mt-5 flex flex-col gap-2 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={18} />
+              <input
+                id="discover-search"
+                type="search"
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                placeholder="Try inflation, empathetic, or reasoning…"
+                className="min-h-12 w-full rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] pl-11 pr-4 text-sm outline-none focus:border-[hsl(var(--primary))]"
+              />
+            </div>
+            <button type="submit" disabled={loading} className="min-h-12 rounded-2xl bg-[hsl(var(--primary))] px-5 text-sm font-bold text-[hsl(var(--primary-foreground))] disabled:cursor-wait disabled:opacity-60">
+              {loading ? 'Looking up…' : 'Look up word'}
+            </button>
+          </form>
+          <div className="mt-5">
+            <div className="font-mono-ui text-[9px] uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]">Dictionary fields</div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {DISCOVERY_FIELDS.map(field => (
+                <span key={field} className="rounded-full bg-[hsl(var(--secondary))] px-3 py-1.5 text-[10px] font-bold text-[hsl(var(--secondary-foreground))]">
+                  {field}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {error && <p role="alert" className="mt-4 text-center text-sm font-bold text-[hsl(var(--destructive))]">{error}</p>}
+        {entry && (
+          <DictionaryEntryCard
+            entry={entry}
+            searchedWord={searchedWord}
+            recommendation={recommendations[entryWordKey]}
+            isSignedIn={isSignedIn}
+            onRecommend={onRecommend}
+          />
+        )}
+        {recommendationError && <p role="alert" className="mt-4 text-center text-sm font-bold text-[hsl(var(--destructive))]">{recommendationError}</p>}
+      </div>
+    </div>
+  );
+}
+
+function DictionaryEntryCard({
+  entry,
+  searchedWord,
+  recommendation,
+  isSignedIn,
+  onRecommend,
+}: {
+  entry: DictionaryEntry;
+  searchedWord: string;
+  recommendation?: RecommendationSummary;
+  isSignedIn: boolean;
+  onRecommend: (word: string, field: DiscoveryField, source: 'library' | 'search', knownWordId?: string) => Promise<void>;
+}) {
+  const wordKey = makeRecommendationKey(entry.word);
+  return (
+    <section className="mt-6 rounded-[28px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 shadow-soft md:p-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="font-mono-ui text-[9px] uppercase tracking-[.14em] text-[hsl(var(--primary))]">Dictionary entry · searched “{searchedWord}”</div>
+          <h2 className="mt-2 font-display text-5xl tracking-[-.05em]">{entry.word}</h2>
+          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{entry.partOfSpeech} · {entry.pronunciation}</p>
+        </div>
+        <RecommendButton
+          word={entry.word}
+          field={entry.field}
+          wordKey={wordKey}
+          recommendation={recommendation}
+          isSignedIn={isSignedIn}
+          source="search"
+          onRecommend={onRecommend}
+        />
+      </div>
+      <div className="mt-7 grid gap-4 md:grid-cols-[minmax(0,1.25fr)_minmax(260px,.75fr)]">
+        <div className="rounded-2xl bg-[hsl(var(--primary)/.07)] p-5">
+          <div className="font-mono-ui text-[9px] uppercase tracking-[.12em] text-[hsl(var(--primary))]">Meaning</div>
+          <p className="mt-2 text-lg font-semibold leading-relaxed">{entry.definition}</p>
+        </div>
+        <div className="rounded-2xl bg-[hsl(var(--secondary)/.7)] p-5">
+          <div className="font-mono-ui text-[9px] uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]">Field</div>
+          <div className="mt-2 text-xl font-extrabold text-[hsl(var(--primary))]">{entry.field}</div>
+          <p className="mt-2 text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">{entry.fieldExplanation}</p>
+        </div>
+      </div>
+      <div className="mt-4 rounded-2xl border border-[hsl(var(--border))] p-5">
+        <div className="font-mono-ui text-[9px] uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]">Natural context</div>
+        <p className="mt-2 text-sm leading-relaxed">“{entry.context}”</p>
+      </div>
+      <div className="mt-5 grid gap-5 sm:grid-cols-2">
+        <WordList label="Synonyms" words={entry.synonyms} tone="primary" />
+        <WordList label="Antonyms" words={entry.antonyms} tone="accent" />
+      </div>
+      <div className="mt-5 grid gap-4 border-t border-[hsl(var(--border))] pt-5 text-sm sm:grid-cols-2">
+        <div><span className="font-bold">Word family:</span> {entry.wordFamily || 'No common forms listed.'}</div>
+        <div><span className="font-bold">Origin:</span> {entry.etymology || 'No concise origin note available.'}</div>
+      </div>
+    </section>
+  );
+}
+
+function RecommendButton({
+  word,
+  field,
+  wordKey,
+  recommendation,
+  isSignedIn,
+  source,
+  onRecommend,
+}: {
+  word: string;
+  field: DiscoveryField;
+  wordKey: string;
+  recommendation?: RecommendationSummary;
+  isSignedIn: boolean;
+  source: 'library' | 'search';
+  onRecommend: (word: string, field: DiscoveryField, source: 'library' | 'search', knownWordId?: string) => Promise<void>;
+}) {
+  const [sending, setSending] = useState(false);
+  if (!isSignedIn) {
+    return <Link href="/sign-in" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-4 text-xs font-bold text-[hsl(var(--primary-foreground))] no-underline"><ThumbsUp size={14} /> Sign in to recommend</Link>;
+  }
+  return (
+    <button
+      type="button"
+      disabled={sending || recommendation?.recommendedByMe}
+      onClick={() => {
+        setSending(true);
+        void onRecommend(word, field, source, wordKey)
+          .catch(() => undefined)
+          .finally(() => setSending(false));
+      }}
+      className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-4 text-xs font-bold text-[hsl(var(--primary-foreground))] disabled:cursor-default disabled:opacity-70"
+    >
+      <ThumbsUp size={14} />
+      {sending
+        ? 'Sending…'
+        : recommendation?.recommendedByMe
+          ? `Recommended${recommendation.count > 1 ? ` · ${recommendation.count}` : ''}`
+          : `Recommend${recommendation?.count ? ` · ${recommendation.count}` : ''}`}
+    </button>
   );
 }
 

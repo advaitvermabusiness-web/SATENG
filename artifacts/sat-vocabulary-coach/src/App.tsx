@@ -448,8 +448,9 @@ function useStoredState<T>(key: string, initial: T): [T, (value: T | ((current: 
   return [value, setValue];
 }
 
-function IconMark() {
-  return <div className="flex h-9 w-9 items-center justify-center rounded-[13px] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm"><Sparkles size={18} strokeWidth={2.5} /></div>;
+function IconMark({ mode = 'everyday' }: { mode?: StudyMode }) {
+  const isExpert = mode === 'expert';
+  return <div className={`flex h-9 w-9 items-center justify-center rounded-[13px] shadow-sm ${isExpert ? 'bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))]' : 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]'}`}><Sparkles size={18} strokeWidth={2.5} /></div>;
 }
 
 function Button({ children, onClick, variant = 'primary', className = '', type = 'button', disabled = false, testId }: { children: ReactNode; onClick?: () => void; variant?: 'primary' | 'quiet' | 'outline' | 'coral'; className?: string; type?: 'button' | 'submit'; disabled?: boolean; testId?: string }) {
@@ -511,6 +512,9 @@ function ModeToggle({ settings, setSettings, compact = false }: { settings: Stud
     <div className={`rounded-2xl border border-[hsl(var(--sidebar-border))] bg-[hsl(var(--card)/.45)] p-1 ${compact ? 'grid grid-cols-3' : 'space-y-1'}`} aria-label="Study mode">
       {modes.map(mode => {
         const active = activeMode === mode.id;
+        const activeModeClass = mode.id === 'expert'
+          ? 'bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))]'
+          : 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]';
         return (
           <button
             key={mode.id}
@@ -518,7 +522,7 @@ function ModeToggle({ settings, setSettings, compact = false }: { settings: Stud
             onClick={() => setSettings(selectStudyMode(mode.id))}
             aria-pressed={active}
             data-testid={`button-mode-${mode.id}${compact ? '-mobile' : ''}`}
-            className={`w-full rounded-xl px-2.5 py-2 text-left transition-colors ${active ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--sidebar-foreground)/.72)] hover:bg-[hsl(var(--sidebar-accent))]'}`}
+            className={`w-full rounded-xl px-2.5 py-2 text-left transition-colors ${active ? `${activeModeClass} shadow-sm` : 'text-[hsl(var(--sidebar-foreground)/.72)] hover:bg-[hsl(var(--sidebar-accent))]'}`}
           >
             <span className="block text-[11px] font-extrabold">{mode.label}</span>
             {!compact && <span className={`mt-0.5 block text-[9px] ${active ? 'text-[hsl(var(--primary-foreground)/.72)]' : 'text-[hsl(var(--muted-foreground))]'}`}>{mode.description}</span>}
@@ -760,12 +764,12 @@ function Shell({ children, onPaywall, syncStatus, settings, setSettings }: { chi
   ];
   const nav = focusedMode ? allNav.filter(item => item.satVisible !== false) : allNav;
 
-  return <div className="app-shell min-h-[100dvh] text-[hsl(var(--foreground))]">
+  return <div className="app-shell min-h-[100dvh] text-[hsl(var(--foreground))]" data-study-mode={studyMode}>
      <aside className={`fixed inset-y-0 left-0 z-30 hidden flex-col overflow-y-auto border-r border-[hsl(var(--sidebar-border))] bg-[hsl(var(--sidebar))] py-6 transition-[width,padding] duration-200 md:flex ${sidebarCollapsed ? 'w-[76px] px-3' : 'w-[238px] px-5'}`}>
        <div className={`relative flex items-center ${sidebarCollapsed ? 'mb-4 justify-center' : 'mb-12 justify-between gap-3'}`}>
-       <Link href="/" className="flex items-center gap-3 no-underline" data-testid="link-brand" title={sidebarCollapsed ? 'Wordwell home' : undefined}>
-        <IconMark />
-         {!sidebarCollapsed && <span className="text-[15px] font-extrabold tracking-[-.03em]">wordwell<span className="text-[hsl(var(--accent))]">.</span></span>}
+        <Link href="/" className="flex items-center gap-3 no-underline" data-testid="link-brand" title={sidebarCollapsed ? 'Wordwell home' : undefined}>
+         <IconMark mode={studyMode} />
+          {!sidebarCollapsed && <span className="text-[15px] font-extrabold tracking-[-.03em]">wordwell<span className={studyMode === 'expert' ? 'text-[hsl(var(--destructive))]' : 'text-[hsl(var(--accent))]'}>.</span></span>}
       </Link>
        {!sidebarCollapsed ? (
          <button type="button" onClick={() => setSidebarCollapsed(true)} aria-label="Collapse sidebar" title="Collapse sidebar" className="rounded-lg p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-accent-foreground))]" data-testid="button-collapse-sidebar">
@@ -823,7 +827,7 @@ function Shell({ children, onPaywall, syncStatus, settings, setSettings }: { chi
        <Link href="/terms" title={sidebarCollapsed ? 'Terms of Use' : undefined} className={`mt-3 flex items-center gap-2 text-xs font-bold text-[hsl(var(--muted-foreground))] no-underline hover:text-[hsl(var(--primary))] ${sidebarCollapsed ? 'justify-center px-3' : 'px-3'}`}><Scale size={15} /> {!sidebarCollapsed && 'Terms of Use'}</Link>
     </aside>
     {!isQuickMode && <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between border-b border-[hsl(var(--border)/.7)] bg-[hsl(var(--background)/.92)] px-5 backdrop-blur-md md:hidden">
-      <Link href="/" className="flex items-center gap-2.5 no-underline"><IconMark /><span className="font-extrabold tracking-[-.03em]">wordwell<span className="text-[hsl(var(--accent))]">.</span></span></Link>
+      <Link href="/" className="flex items-center gap-2.5 no-underline"><IconMark mode={studyMode} /><span className="font-extrabold tracking-[-.03em]">wordwell<span className={studyMode === 'expert' ? 'text-[hsl(var(--destructive))]' : 'text-[hsl(var(--accent))]'}>.</span></span></Link>
       <button className="rounded-xl p-2 text-[hsl(var(--foreground))]" onClick={() => setMenuOpen(!menuOpen)} aria-label="Open navigation" data-testid="button-open-menu"><Menu size={22} /></button>
       {menuOpen && (
         <div className="absolute left-3 right-3 top-[60px] max-h-[calc(100dvh-76px)] overflow-y-auto rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-2 shadow-lift">
@@ -2764,23 +2768,23 @@ function Quiz({ settings, setSettings, progress, setProgress, setSessions }: { s
             {!isSatQuiz ? 'Recall check' : currentQuestion?.kind === 'context' ? 'SAT passage practice' : currentQuestion?.kind === 'meaning' ? 'SAT meaning check' : 'SAT usage check'}
           </div>
         </div>
-        <section className={`mb-5 overflow-hidden rounded-[24px] border p-5 shadow-soft md:p-6 ${isSatQuiz ? 'border-[hsl(var(--primary)/.45)] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'}`} aria-labelledby="quiz-mode-title">
+         <section className={`mb-5 overflow-hidden rounded-[24px] border p-5 shadow-soft md:p-6 ${isSatQuiz ? 'border-[hsl(var(--primary)/.45)] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : isExpertQuiz ? 'border-[hsl(var(--destructive)/.45)] bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'}`} aria-labelledby="quiz-mode-title">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-4">
-              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isSatQuiz ? 'bg-[hsl(var(--primary-foreground)/.14)]' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]'}`}>
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isSatQuiz || isExpertQuiz ? 'bg-[hsl(var(--primary-foreground)/.14)]' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]'}`}>
                 <Target size={21} />
               </div>
               <div>
-                <div id="quiz-mode-title" className={`font-mono-ui text-[10px] uppercase tracking-[.16em] ${isSatQuiz ? 'text-[hsl(var(--primary-foreground)/.72)]' : 'text-[hsl(var(--muted-foreground))]'}`}>Quiz mode</div>
+                <div id="quiz-mode-title" className={`font-mono-ui text-[10px] uppercase tracking-[.16em] ${isSatQuiz || isExpertQuiz ? 'text-[hsl(var(--primary-foreground)/.72)]' : 'text-[hsl(var(--muted-foreground))]'}`}>Quiz mode</div>
                 <h1 className="mt-1 font-display text-3xl tracking-[-.04em]">{isSatQuiz ? 'SAT Mode' : isExpertQuiz ? 'Expert Mode' : 'Everyday Mode'}</h1>
-                <p className={`mt-1 max-w-md text-xs leading-relaxed ${isSatQuiz ? 'text-[hsl(var(--primary-foreground)/.76)]' : 'text-[hsl(var(--muted-foreground))]'}`}>
+                <p className={`mt-1 max-w-md text-xs leading-relaxed ${isSatQuiz || isExpertQuiz ? 'text-[hsl(var(--primary-foreground)/.76)]' : 'text-[hsl(var(--muted-foreground))]'}`}>
                   {isSatQuiz ? 'Build durable SAT understanding through context, meaning, and precise usage checks.' : isExpertQuiz ? 'Recall uncommon American English words and verify them with Merriam-Webster.' : 'Strengthen everyday vocabulary by recalling each word’s meaning.'}
                 </p>
               </div>
             </div>
-            <div className={`grid shrink-0 grid-cols-3 rounded-xl p-1 ${isSatQuiz ? 'bg-[hsl(var(--primary-foreground)/.12)]' : 'bg-[hsl(var(--secondary))]'}`}>
+            <div className={`grid shrink-0 grid-cols-3 rounded-xl p-1 ${isSatQuiz || isExpertQuiz ? 'bg-[hsl(var(--primary-foreground)/.12)]' : 'bg-[hsl(var(--secondary))]'}`}>
               {(['everyday', 'sat', 'expert'] as StudyMode[]).map(mode => (
-                <button key={mode} type="button" onClick={() => selectQuizMode(mode)} aria-pressed={studyMode === mode} data-testid={`button-quiz-mode-${mode}`} className={`rounded-lg px-3 py-2 text-xs font-extrabold capitalize transition-colors ${studyMode === mode ? 'bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm' : isSatQuiz ? 'text-[hsl(var(--primary-foreground)/.72)] hover:bg-[hsl(var(--primary-foreground)/.1)]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--card)/.7)]'}`}>{mode}</button>
+                <button key={mode} type="button" onClick={() => selectQuizMode(mode)} aria-pressed={studyMode === mode} data-testid={`button-quiz-mode-${mode}`} className={`rounded-lg px-3 py-2 text-xs font-extrabold capitalize transition-colors ${studyMode === mode ? `${mode === 'expert' ? 'text-[hsl(var(--destructive))]' : 'text-[hsl(var(--primary))]'} bg-[hsl(var(--card))] shadow-sm` : isSatQuiz || isExpertQuiz ? 'text-[hsl(var(--primary-foreground)/.72)] hover:bg-[hsl(var(--primary-foreground)/.1)]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--card)/.7)]'}`}>{mode}</button>
               ))}
             </div>
           </div>

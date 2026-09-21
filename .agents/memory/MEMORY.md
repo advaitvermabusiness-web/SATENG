@@ -4,3 +4,4 @@
 - [Expert dictionary source](expert-dictionary-source.md) — Expert Mode is distinct from SAT and uses Merriam-Webster references for its primarily American audience.
 - [SAT context-question standard](sat-context-question-standard.md) — SAT word questions must rely on passage clues and rotate across four academic domains.
 - [Sentence assessment ratings](sentence-assessment-ratings.md) — keep grammar scoring separate from the existing sentence-complexity rating.
+- [GitHub empty repository uploads](github-empty-repo-upload.md) — seed an empty GitHub repository through Contents API before using Git data endpoints.

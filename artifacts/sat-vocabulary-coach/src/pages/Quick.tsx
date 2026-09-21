@@ -102,7 +102,7 @@ export function Quick({
           <ChevronLeft size={20} />
         </Link>
         <div className="flex items-center gap-2 rounded-full bg-[hsl(var(--card)/.4)] px-3 py-1.5 backdrop-blur-md">
-          <Zap size={14} className="text-[hsl(var(--accent))]" />
+           <Zap size={14} className={settings.expertMode ? 'text-[hsl(var(--destructive))]' : 'text-[hsl(var(--accent))]'} />
            <span className="font-mono-ui text-[10px] font-bold uppercase tracking-[.1em] text-[hsl(var(--foreground))]">{settings.expertMode ? 'Quick Mode · Expert' : settings.satMode ? 'Quick Mode · SAT' : 'Quick Mode · Everyday'}</span>
         </div>
       </div>

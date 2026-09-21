@@ -18,3 +18,4 @@
 //   export type Post = typeof postsTable.$inferSelect;
 
 export * from "./vocabulary-user-state";
+export * from "./word-recommendation";

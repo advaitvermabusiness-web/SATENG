@@ -318,6 +318,98 @@
   --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0);
 }
 
+/* Study mode palettes. Everyday remains the root baseline; focused modes
+ * inherit the same component tokens with their own visual language. */
+[data-study-mode='sat'] {
+  --background: 211 50% 96%;
+  --foreground: 222 42% 18%;
+  --border: 214 32% 84%;
+  --card: 210 72% 99%;
+  --card-foreground: 222 42% 18%;
+  --card-border: 214 32% 84%;
+  --sidebar: 216 49% 91%;
+  --sidebar-foreground: 222 42% 18%;
+  --sidebar-border: 214 31% 82%;
+  --sidebar-primary: 221 64% 38%;
+  --sidebar-primary-foreground: 210 40% 98%;
+  --sidebar-accent: 213 45% 85%;
+  --sidebar-accent-foreground: 221 61% 28%;
+  --sidebar-ring: 221 64% 38%;
+  --popover: 210 72% 99%;
+  --popover-foreground: 222 42% 18%;
+  --popover-border: 214 32% 84%;
+  --primary: 221 64% 38%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 213 45% 85%;
+  --secondary-foreground: 221 61% 28%;
+  --muted: 214 24% 91%;
+  --muted-foreground: 219 17% 47%;
+  --accent: 188 72% 50%;
+  --accent-foreground: 222 42% 18%;
+  --destructive: 0 68% 52%;
+  --destructive-foreground: 210 40% 98%;
+  --input: 214 32% 79%;
+  --ring: 221 64% 38%;
+  --chart-1: 221 64% 38%;
+  --chart-2: 188 72% 50%;
+  --chart-3: 260 48% 59%;
+  --chart-4: 198 62% 52%;
+  --chart-5: 152 38% 45%;
+
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --primary-border: hsl(var(--primary));
+  --secondary-border: hsl(var(--secondary));
+  --muted-border: hsl(var(--muted));
+  --accent-border: hsl(var(--accent));
+  --destructive-border: hsl(var(--destructive));
+}
+
+[data-study-mode='expert'] {
+  --background: 8 46% 97%;
+  --foreground: 0 25% 20%;
+  --border: 5 25% 84%;
+  --card: 8 56% 99%;
+  --card-foreground: 0 25% 20%;
+  --card-border: 5 25% 84%;
+  --sidebar: 0 34% 92%;
+  --sidebar-foreground: 0 25% 20%;
+  --sidebar-border: 2 26% 84%;
+  --sidebar-primary: 4 65% 46%;
+  --sidebar-primary-foreground: 8 46% 97%;
+  --sidebar-accent: 4 33% 87%;
+  --sidebar-accent-foreground: 4 58% 30%;
+  --sidebar-ring: 4 65% 46%;
+  --popover: 8 56% 99%;
+  --popover-foreground: 0 25% 20%;
+  --popover-border: 5 25% 84%;
+  --primary: 4 65% 46%;
+  --primary-foreground: 8 46% 97%;
+  --secondary: 4 33% 87%;
+  --secondary-foreground: 4 58% 30%;
+  --muted: 10 22% 91%;
+  --muted-foreground: 4 16% 48%;
+  --accent: 24 76% 58%;
+  --accent-foreground: 0 25% 20%;
+  --destructive: 4 65% 46%;
+  --destructive-foreground: 8 46% 97%;
+  --input: 5 25% 80%;
+  --ring: 4 65% 46%;
+  --chart-1: 4 65% 46%;
+  --chart-2: 24 76% 58%;
+  --chart-3: 350 55% 58%;
+  --chart-4: 16 58% 52%;
+  --chart-5: 42 58% 52%;
+
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --primary-border: hsl(var(--primary));
+  --secondary-border: hsl(var(--secondary));
+  --muted-border: hsl(var(--muted));
+  --accent-border: hsl(var(--accent));
+  --destructive-border: hsl(var(--destructive));
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -458,8 +550,8 @@
     background-image: linear-gradient(hsl(var(--primary) / .045) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--primary) / .045) 1px, transparent 1px);
     background-size: 28px 28px;
   }
-  .shadow-soft { box-shadow: 0 12px 35px hsl(203 31% 19% / .07); }
-   .shadow-lift { box-shadow: 0 18px 45px hsl(201 48% 36% / .14); }
+   .shadow-soft { box-shadow: 0 12px 35px hsl(var(--foreground) / .07); }
+    .shadow-lift { box-shadow: 0 18px 45px hsl(var(--primary) / .14); }
   .animate-in-up { animation: in-up .55s cubic-bezier(.22,1,.36,1) both; }
   .animate-float { animation: float 4.5s ease-in-out infinite; }
   .delay-1 { animation-delay: 90ms; }
