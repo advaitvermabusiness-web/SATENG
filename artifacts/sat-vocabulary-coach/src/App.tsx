@@ -61,7 +61,7 @@ import { WordActions } from './components/WordActions';
 import { GeneratedScenario } from './components/GeneratedScenario';
 import { useAccountSync, type AccountSyncStatus } from './components/AccountSync';
 import { getReviewIntervalDays, getScheduledWords, isReviewDue, recordWordReview } from './lib/spacedRepetition';
-import { blankTargetWord, buildSatContextQuestion, getSatAnswerChoices, getSatDefinitionChoices, getSatOptionRationale, getSatUsageChoices, type SatTier } from './lib/satQuiz';
+import { blankTargetWord, buildSatContextQuestion, formatSatPassageForChoices, getSatAnswerChoices, getSatDefinitionChoices, getSatOptionRationale, getSatUsageChoices, type SatTier } from './lib/satQuiz';
 import { isStoredVocabularySlice } from './lib/vocabularyStateValidation';
 
 // Temporary preview mode: make the full learning experience available while billing is offline.
@@ -179,6 +179,13 @@ type SentenceAssessment = {
     feedback: string;
   };
 };
+type SatRelationshipLabel = 'Contrast' | 'Cause' | 'Concession' | 'Continuation' | 'Unclear';
+type SatRelationshipAssessment = {
+  correct: boolean;
+  submitted: SatRelationshipLabel;
+  expected: Exclude<SatRelationshipLabel, 'Unclear'>;
+  feedback: string;
+};
 type QuizBankId = 'daily' | 'sat' | 'everyday' | 'expert' | 'all' | 'endless';
 type QuizBankOption = {
   id: QuizBankId;
@@ -192,6 +199,7 @@ type QuizQuestion = {
 };
 
 const SAT_PHASE_ORDER: SatPhase[] = ['preview', 'invent', 'trace', 'postmortem', 'morphology', 'intern'];
+const SAT_PREVIEW_SECONDS = 15;
 
 const SAT_RELATIONSHIP_GUIDE = [
   { title: 'Contrast', signals: 'however, but, yet, whereas, unlike, in contrast', prompt: 'The blank should show that the next idea differs from the previous one.' },
@@ -1338,8 +1346,11 @@ function SatLearn({ settings, progress, setProgress, setSessions, setSettings, b
   const [lessonWords, setLessonWords] = useState(() => getScheduledWords(lessonPool, progress, settings.dailyGoal));
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<SatPhase>('preview');
-  const [previewSeconds, setPreviewSeconds] = useState(30);
+  const [previewSeconds, setPreviewSeconds] = useState(SAT_PREVIEW_SECONDS);
   const [prediction, setPrediction] = useState('');
+  const [relationshipAssessment, setRelationshipAssessment] = useState<SatRelationshipAssessment | null>(null);
+  const [relationshipChecking, setRelationshipChecking] = useState(false);
+  const [relationshipError, setRelationshipError] = useState('');
   const [inventedWord, setInventedWord] = useState('');
   const [traceStarted, setTraceStarted] = useState(false);
   const [traceMode, setTraceMode] = useState<'pointer' | 'keyboard' | null>(null);
@@ -1378,8 +1389,10 @@ function SatLearn({ settings, progress, setProgress, setSessions, setSettings, b
     setLessonWords(getScheduledWords(lessonPool, progress, settings.dailyGoal));
     setIndex(0);
     setPhase('preview');
-    setPreviewSeconds(30);
+    setPreviewSeconds(SAT_PREVIEW_SECONDS);
     setPrediction('');
+    setRelationshipAssessment(null);
+    setRelationshipError('');
     setInventedWord('');
     setSatStarted(Date.now());
   }, [lessonPool, settings.dailyGoal, wordPoolRevision]);
@@ -1403,8 +1416,10 @@ function SatLearn({ settings, progress, setProgress, setSessions, setSettings, b
 
   const resetWordState = () => {
     setPhase('preview');
-    setPreviewSeconds(30);
+    setPreviewSeconds(SAT_PREVIEW_SECONDS);
     setPrediction('');
+    setRelationshipAssessment(null);
+    setRelationshipError('');
     setInventedWord('');
     setTraceStarted(false);
     setTraceMode(null);
@@ -1457,7 +1472,7 @@ function SatLearn({ settings, progress, setProgress, setSessions, setSettings, b
     setResting(false);
     if (draft) {
       setPhase(draft.phase);
-      setPreviewSeconds(draft.previewSeconds);
+      setPreviewSeconds(Math.min(draft.previewSeconds, SAT_PREVIEW_SECONDS));
       setPrediction(draft.prediction);
       setInventedWord(draft.inventedWord);
       setTraceStarted(draft.traceStarted);
@@ -1610,6 +1625,49 @@ function SatLearn({ settings, progress, setProgress, setSessions, setSettings, b
     if (canAdvance) setPhase(nextPhase);
   };
 
+  const assessRelationship = async () => {
+    const learnerPrediction = prediction.trim();
+    if (!current || phase !== 'preview' || previewSeconds > 0 || !learnerPrediction || relationshipChecking) return;
+
+    setRelationshipChecking(true);
+    setRelationshipAssessment(null);
+    setRelationshipError('');
+    try {
+      const response = await fetch('/api/check-sat-relationship', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          word: current.word,
+          passage: traceTokens.join(' '),
+          prediction: learnerPrediction,
+        }),
+      });
+      if (!response.ok) throw new Error(`Relationship assessment failed (${response.status})`);
+
+      const result: unknown = await response.json();
+      if (
+        !result ||
+        typeof result !== 'object' ||
+        !('correct' in result) ||
+        !('submitted' in result) ||
+        !('expected' in result) ||
+        !('feedback' in result) ||
+        typeof result.correct !== 'boolean' ||
+        !['Contrast', 'Cause', 'Concession', 'Continuation', 'Unclear'].includes(result.submitted as string) ||
+        !['Contrast', 'Cause', 'Concession', 'Continuation'].includes(result.expected as string) ||
+        typeof result.feedback !== 'string'
+      ) {
+        throw new Error('Invalid relationship assessment response');
+      }
+      setRelationshipAssessment(result as SatRelationshipAssessment);
+    } catch {
+      setRelationshipError('We could not check that relationship right now. Your prediction is still here—please try again.');
+    } finally {
+      setRelationshipChecking(false);
+    }
+  };
+
   const assessIntern = async () => {
     const explanation = internDraft.trim();
     if (!current || !selectedTrap || !explanation || internChecking) return;
@@ -1743,7 +1801,7 @@ function SatLearn({ settings, progress, setProgress, setSessions, setSettings, b
             {phase === 'preview' ? 'Scan the structure.' : phase === 'invent' ? 'Make a prediction of your own.' : phase === 'trace' ? `Trace the logic of ${current.word}.` : phase === 'postmortem' ? 'Read the test-maker’s move.' : phase === 'morphology' ? `Map the anatomy of ${current.word}.` : 'Teach the Intern.'}
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">
-            {phase === 'preview' ? 'Study the transition and structure for 30 seconds. Do not hunt for the word yet.' : phase === 'invent' ? 'Before official choices appear, supply a simple placeholder that would fit the sentence.' : phase === 'trace' ? 'Move across the sentence from left to right. Choices unlock only after the full trace.' : phase === 'postmortem' ? 'A wrong answer is useful data. Name what made the trap convincing.' : phase === 'morphology' ? 'Arrange the word blocks into their most useful structure, then connect that structure to meaning.' : 'Explain the trap in plain English so the idea becomes yours.'}
+             {phase === 'preview' ? `Study the transition and structure for ${SAT_PREVIEW_SECONDS} seconds. Do not hunt for the word yet.` : phase === 'invent' ? 'Before official choices appear, supply a simple placeholder that would fit the sentence.' : phase === 'trace' ? 'Move across the sentence from left to right. Choices unlock only after the full trace.' : phase === 'postmortem' ? 'A wrong answer is useful data. Name what made the trap convincing.' : phase === 'morphology' ? 'Arrange the word blocks into their most useful structure, then connect that structure to meaning.' : 'Explain the trap in plain English so the idea becomes yours.'}
           </p>
         </div>
         <section className="overflow-hidden rounded-[28px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-soft">
@@ -1756,12 +1814,37 @@ function SatLearn({ settings, progress, setProgress, setSessions, setSettings, b
                    <div className="flex items-center gap-2 text-sm font-extrabold"><Clock3 size={16} className="text-[hsl(var(--primary))]" /> Strategic preview</div>
                    <span className="font-mono-ui text-xs font-bold text-[hsl(var(--primary))]">{previewSeconds}s</span>
                  </div>
-                 <p className="mt-2 text-xs leading-relaxed text-[hsl(var(--muted-foreground))]">What does the transition demand here—contrast, cause, concession, or continuation?</p>
+                 <p className="mt-2 text-xs leading-relaxed text-[hsl(var(--muted-foreground))]">What relationship does the sentence demand here—contrast, cause, concession, or continuation?</p>
                  <button type="button" onClick={() => setShowRelationshipGuide(true)} className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-lg border border-[hsl(var(--primary)/.35)] bg-[hsl(var(--card)/.7)] px-3 text-xs font-bold text-[hsl(var(--primary))] hover:bg-[hsl(var(--card))]" data-testid="button-sat-preview-help"><CircleHelp size={14} /> Help</button>
-                 <textarea value={prediction} onChange={event => setPrediction(event.target.value)} rows={2} maxLength={240} placeholder="Write your first structural prediction…" aria-label="Write your structural prediction" className="mt-4 min-h-20 w-full resize-none rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm leading-relaxed outline-none focus:border-[hsl(var(--primary))]" />
+                 <textarea value={prediction} onChange={event => { setPrediction(event.target.value); setRelationshipAssessment(null); setRelationshipError(''); }} rows={2} maxLength={240} placeholder="Write your first structural prediction…" aria-label="Write your structural prediction" className="mt-4 min-h-20 w-full resize-none rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm leading-relaxed outline-none focus:border-[hsl(var(--primary))]" />
+                 {relationshipAssessment && (
+                   <div role="status" className={`mt-4 rounded-xl p-4 ${relationshipAssessment.correct ? 'bg-[hsl(var(--primary)/.1)]' : 'bg-[hsl(var(--accent)/.13)]'}`}>
+                     <div className="flex flex-wrap items-center justify-between gap-2">
+                       <div className="text-xs font-extrabold">{relationshipAssessment.correct ? 'Correct relationship' : 'Relationship to revisit'}</div>
+                       <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${relationshipAssessment.correct ? 'bg-[hsl(var(--primary)/.14)] text-[hsl(var(--primary))]' : 'bg-[hsl(var(--accent)/.2)] text-[hsl(var(--accent-foreground))]'}`}>
+                         {relationshipAssessment.correct ? relationshipAssessment.expected : `Expected: ${relationshipAssessment.expected}`}
+                       </span>
+                     </div>
+                     <p className="mt-2 text-xs leading-relaxed text-[hsl(var(--muted-foreground))]">
+                       {relationshipAssessment.submitted !== 'Unclear' && `You identified ${relationshipAssessment.submitted}. `}
+                       {relationshipAssessment.feedback}
+                     </p>
+                   </div>
+                 )}
+                 {relationshipError && <p role="alert" className="mt-3 text-xs leading-relaxed text-[hsl(var(--destructive))]">{relationshipError}</p>}
                  <div className="mt-3 flex items-center justify-between gap-3">
-                   <span className="text-[10px] text-[hsl(var(--muted-foreground))]">{previewSeconds > 0 ? 'Keep scanning until the timer ends.' : 'Prediction locked to the structure.'}</span>
-                   <Button onClick={() => advancePhase('invent')} disabled={!prediction.trim() || previewSeconds > 0} testId="button-lock-sat-preview">{previewSeconds > 0 ? `Scan ${previewSeconds}s` : 'Lock prediction'} {previewSeconds > 0 ? <Clock3 size={15} /> : <ArrowRight size={15} />}</Button>
+                   <span className="text-[10px] text-[hsl(var(--muted-foreground))]">{previewSeconds > 0 ? 'Keep scanning until the timer ends.' : relationshipAssessment ? 'Your prediction has been checked.' : 'Check your relationship prediction.'}</span>
+                   {relationshipError ? (
+                     <div className="flex flex-wrap justify-end gap-2">
+                       <Button variant="outline" onClick={() => setPhase('invent')} disabled={!prediction.trim() || previewSeconds > 0 || relationshipChecking} testId="button-skip-sat-relationship-check">Continue without check <ArrowRight size={15} /></Button>
+                       <Button onClick={() => void assessRelationship()} disabled={!prediction.trim() || previewSeconds > 0 || relationshipChecking} testId="button-retry-sat-relationship-check">{relationshipChecking ? 'Checking…' : 'Try again'} <RotateCcw size={14} /></Button>
+                     </div>
+                   ) : (
+                     <Button onClick={() => relationshipAssessment ? advancePhase('invent') : void assessRelationship()} disabled={!prediction.trim() || previewSeconds > 0 || relationshipChecking} testId="button-lock-sat-preview">
+                       {previewSeconds > 0 ? `Scan ${previewSeconds}s` : relationshipChecking ? 'Checking…' : relationshipAssessment ? 'Continue to Invent' : 'Check relationship'}
+                       {previewSeconds > 0 || relationshipChecking ? <Clock3 size={15} /> : <ArrowRight size={15} />}
+                     </Button>
+                   )}
                  </div>
                </div>
              )}
@@ -2767,7 +2850,7 @@ function Quiz({ settings, setSettings, progress, setProgress, setSessions }: { s
              <p className="mt-3 text-sm text-[hsl(var(--muted-foreground))]">Use the passage’s transitions, contrast, and semantic signals—not an isolated definition.</p>
             <div className="mt-7 rounded-[24px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 shadow-soft md:p-8">
                <div className="mb-3 font-mono-ui text-[9px] uppercase tracking-[.14em] text-[hsl(var(--muted-foreground))]">{satContextQuestion?.formatLabel}</div>
-               <p className="font-display text-xl leading-relaxed tracking-[-.01em] md:text-2xl">“{satContextQuestion?.passage}”</p>
+                <p className="font-display text-xl leading-relaxed tracking-[-.01em] md:text-2xl">“{formatSatPassageForChoices(satContextQuestion?.passage ?? '', choices)}”</p>
             </div>
           </>
          ) : isSatQuiz && currentQuestion?.kind === 'meaning' ? (
