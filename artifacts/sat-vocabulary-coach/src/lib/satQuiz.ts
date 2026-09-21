@@ -33,6 +33,13 @@ export function blankTargetWord(current: Word) {
   return sourceSentence;
 }
 
+export function formatSatPassageForChoices(passage: string, choices: string[]) {
+  const hasVowelStartingChoice = choices.some(choice => /^[aeiou]/i.test(choice.trim()));
+  return hasVowelStartingChoice
+    ? passage.replace(/\ban(?=\s+_{2,})/gi, 'a/an')
+    : passage;
+}
+
 export function buildSatContextQuestion(current: Word, sequence: number, tier: SatTier = 2): SatContextQuestion {
   const domain = SAT_DOMAINS[Math.abs(sequence) % SAT_DOMAINS.length];
   if (tier === 1) {
